@@ -8,6 +8,8 @@
 
 #import "CLMomentsInsertCollectionView.h"
 
+#pragma mark - CLMomentsInsertCollectionView
+#pragma mark interface
 @interface CLMomentsInsertCollectionView ()
 
 /** 数据源 */
@@ -27,6 +29,7 @@
 
 @end
 
+#pragma mark implementation
 @implementation CLMomentsInsertCollectionView
 
 #pragma mark - Lazy懒加载，设置自己需要的属性

@@ -9,22 +9,32 @@
 #import "CLPictureBrowser.h"
 #import <AFNetworking/UIKit+AFNetworking.h>
 
+/// 这里是局部宏定义，小写，避免与其他。
+#define kScreenWidth        [UIScreen mainScreen].bounds.size.width
+#define kScreenHeight       [UIScreen mainScreen].bounds.size.height
+
 #pragma mark - CLPictureBrowser
 #pragma mark interface
 @interface CLPictureBrowser()<UICollectionViewDelegate, UICollectionViewDataSource>
 
 /** 流动布局 */
 @property (nonatomic, strong) UICollectionViewFlowLayout *flowLayout;
+
 /** CollectionView */
 @property (nonatomic, strong) UICollectionView *collectionView;
 
+/// UI控件
 @property (nonatomic, strong) UILabel *numberLabel;
 @property (nonatomic, strong) NSArray *imageArray;
 @property (nonatomic, strong) UIImageView *imageView;
 
+/// 用于记录的属性
 @property (nonatomic, assign) BOOL show;
 @property (nonatomic, assign) CGRect originalframe;
 @property (nonatomic, assign) NSUInteger originalIndex;
+
+/** 状态栏样式 */
+@property (nonatomic, assign) UIStatusBarStyle statusBarStyle;
 
 @end
 
@@ -53,7 +63,12 @@
 		_collectionView.pagingEnabled = YES;
 		_collectionView.showsHorizontalScrollIndicator = NO;
 		_collectionView.showsVerticalScrollIndicator = NO;
-		_collectionView.backgroundColor = UIColor.blackColor;
+		_collectionView.backgroundColor = UIColor.clearColor;
+		
+		if (@available(iOS 11.0, *)) {
+			_collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+		} else {
+		}
 		
 		NSString *name = NSStringFromClass([CLPictureBrowserCollectionViewCell class]);
 		[_collectionView registerClass:[CLPictureBrowserCollectionViewCell class] forCellWithReuseIdentifier:name];
@@ -64,15 +79,15 @@
 
 #pragma mark - 实例化
 + (instancetype)sharedInstance {
-	return [[self alloc] init];
+	return [[self alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleDark]];
 }
 
-- (instancetype)init
+- (instancetype)initWithEffect:(UIVisualEffect *)effect
 {
 	static CLPictureBrowser *instance = nil;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		instance = [super init];
+		instance = [super initWithEffect:effect];
 		[instance setup];
 	});
 	return instance;
@@ -81,13 +96,13 @@
 #pragma mark - 配置
 - (void)setup {
 	self.frame = [UIScreen mainScreen].bounds;
-	self.backgroundColor = UIColor.blackColor;
-	[self addSubview:self.collectionView];
+//	self.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+	[self.contentView addSubview:self.collectionView];
 	
 	// 图片占位
 	self.imageView = [[UIImageView alloc]init];
 	self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-	[self addSubview:_imageView];
+	[self.contentView addSubview:_imageView];
 	
 	// 图片数量
 	CGFloat statusBarHeight = CGRectGetHeight([[UIApplication sharedApplication] statusBarFrame]);
@@ -95,7 +110,7 @@
 	self.numberLabel.backgroundColor = [UIColor clearColor];
 	self.numberLabel.textColor = [UIColor whiteColor];
 	self.numberLabel.textAlignment = NSTextAlignmentCenter;
-	[self addSubview:self.numberLabel];
+	[self.contentView addSubview:self.numberLabel];
 }
 
 #pragma mark - 公有,外部调用方法
@@ -121,6 +136,10 @@
 
 #pragma mark 显示
 - (void)showViewWithImageView:(UIImageView * _Nullable)currentImageView {
+	// 记录状态样式，用于恢复
+	self.statusBarStyle = [UIApplication sharedApplication].statusBarStyle;
+	// 然后设为亮色样式
+	[UIApplication sharedApplication].statusBarStyle = UIStatusBarStyleLightContent;
 	
 	if (self.show == NO) {
 		self.show = YES;
@@ -136,16 +155,13 @@
 			self.imageView.image = image;
 			[window addSubview:self];
 			
-			__weak __typeof(self)weakSelf = self;
+			// ImageView全屏后的高度
+			CGFloat imageHeight = kScreenWidth * image.size.height/image.size.width;
 			[UIView animateWithDuration:0.28 animations:^{
-				weakSelf.imageView.frame = CGRectMake(0,
-													  ([UIScreen mainScreen].bounds.size.height-image.size.height*[UIScreen mainScreen].bounds.size.width/image.size.width)/2,
-													  [UIScreen mainScreen].bounds.size.width,
-													  image.size.height*[UIScreen mainScreen].bounds.size.width/image.size.width
-													  );
+				self.imageView.frame = CGRectMake(0, (kScreenHeight - imageHeight) / 2.0, kScreenWidth, imageHeight);
 			}completion:^(BOOL finished) {
-				weakSelf.imageView.alpha = 0;
-				weakSelf.collectionView.alpha = 1;
+				self.imageView.alpha = 0;
+				self.collectionView.alpha = 1;
 			}];
 		}else{
 			// 获得根窗口
@@ -163,23 +179,24 @@
 
 #pragma mark 隐藏
 - (void)hideWithIndex:(NSUInteger)index {
+	// 区别对待
 	if (CGRectIsEmpty(self.originalframe) || self.originalIndex != index) {
-		[UIView animateWithDuration:0.28 animations:^{
-			self.collectionView.alpha = 0;
-		} completion:^(BOOL finished) {
-			[self removeFromSuperview];
-		}];
-	}else{
+	} else {
 		self.collectionView.alpha = 0;
 		self.imageView.alpha = 1;
-		[UIView animateWithDuration:0.28 animations:^{
+	}
+	[UIView animateWithDuration:0.28 animations:^{
+		if (CGRectIsEmpty(self.originalframe) || self.originalIndex != index) {
+			self.collectionView.alpha = 0;
+		} else {
 			self.imageView.frame = self.originalframe;
 			self.imageView.alpha = 0.0;
-		} completion:^(BOOL finished) {
-			[self removeFromSuperview];
-		}];
-	}
-	self.show = NO;
+		}
+	} completion:^(BOOL finished) {
+		self.show = NO;
+		[self removeFromSuperview];
+		[UIApplication sharedApplication].statusBarStyle = self.statusBarStyle;
+	}];
 }
 
 #pragma mark - UICollectionView dataSource
@@ -230,6 +247,8 @@
 	self = [super initWithFrame:frame];
 	if (self) {
 		// Initialization code
+		self.backgroundColor = UIColor.clearColor;
+		
 		self.imageZoom = [[CLPictureZoom alloc]initWithFrame:[UIScreen mainScreen].bounds];
 		[self.contentView addSubview:self.imageZoom];
 	}

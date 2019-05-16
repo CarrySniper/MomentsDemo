@@ -9,7 +9,7 @@
 #ifndef CLMomentsMacro_h
 #define CLMomentsMacro_h
 
-/// 这里是局部宏定义，小写。
+/// 这里是局部宏定义，小写，避免与其他名字冲突。
 #define kScreenWidth        [UIScreen mainScreen].bounds.size.width
 #define kScreenHeight       [UIScreen mainScreen].bounds.size.height
 

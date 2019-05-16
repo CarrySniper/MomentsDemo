@@ -10,8 +10,12 @@
 #import "CLPictureZoom.h"
 NS_ASSUME_NONNULL_BEGIN
 
-@interface CLPictureBrowser : UIView
+// 如何要状态栏颜色变白，需要设置View controller-based status bar appearance = NO
+@interface CLPictureBrowser : UIVisualEffectView
 
+/**
+ 单例
+ */
 + (instancetype)sharedInstance;
 
 /**

@@ -20,9 +20,14 @@
 		self.showsVerticalScrollIndicator = NO;
 		self.delegate = self;    //实现Scrollview的代理
 		self.bounces = NO;
-		self.bouncesZoom = NO;//NO时缩放不可超出最大最小缩放范围 默认YES
+		self.bouncesZoom = YES;//NO时缩放不可超出最大最小缩放范围 默认YES
 		self.minimumZoomScale = 1;//缩放最小倍数 =1不能缩小
-		self.maximumZoomScale = 5;//缩放最大倍数 =1不能放大
+		self.maximumZoomScale = 3;//缩放最大倍数 =1不能放大
+		
+		if (@available(iOS 11.0, *)) {
+			self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+		} else {
+		}
 		
 		self.imageView = [[UIImageView alloc]initWithFrame:self.frame];
 		self.imageView.contentMode = UIViewContentModeScaleAspectFit;
@@ -37,21 +42,54 @@
 	return self;
 }
 
-- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView
-{
+#pragma mark - 点击事件
+- (void)singleTap:(UITapGestureRecognizer *)recognizer {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		if (self.actionHandler) {
+			self.actionHandler();
+		}
+	});
+}
+
+#pragma mark - 缩放代理
+- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView {
 	for (UIView *view in self.subviews){
 		return view;
 	}
 	return nil;
 }
 
-- (void)singleTap:(UITapGestureRecognizer *)recognizer
-{
-	dispatch_async(dispatch_get_main_queue(), ^{
-		if (self.actionHandler) {
-			self.actionHandler();
-		}
-	});
+- (void)scrollViewDidZoom:(UIScrollView *)scrollView {
+	[self setNeedsLayout];
+	[self layoutIfNeeded];
+}
+
+#pragma mark - 重设Frame，让缩放的时候居中
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	
+	// Center the image as it becomes smaller than the size of the screen
+	CGSize boundsSize = self.bounds.size;
+	CGRect frameToCenter = _imageView.frame;
+	
+	// Horizontally
+	if (frameToCenter.size.width < boundsSize.width) {
+		frameToCenter.origin.x = floorf((boundsSize.width - frameToCenter.size.width) / 2.0);
+	} else {
+		frameToCenter.origin.x = 0;
+	}
+	
+	// Vertically
+	if (frameToCenter.size.height < boundsSize.height) {
+		frameToCenter.origin.y = floorf((boundsSize.height - frameToCenter.size.height) / 2.0);
+	} else {
+		frameToCenter.origin.y = 0;
+	}
+	
+	// Center
+	if (!CGRectEqualToRect(_imageView.frame, frameToCenter)) {
+		_imageView.frame = frameToCenter;
+	}
 }
 
 @end
