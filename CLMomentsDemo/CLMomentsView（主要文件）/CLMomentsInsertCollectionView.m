@@ -10,7 +10,7 @@
 
 #pragma mark - CLMomentsInsertCollectionView
 #pragma mark interface
-@interface CLMomentsInsertCollectionView ()
+@interface CLMomentsInsertCollectionView ()<UIGestureRecognizerDelegate>
 
 /** 数据源 */
 @property (nonatomic, strong) NSArray *dataArray;
@@ -158,7 +158,19 @@
 	NSString *urlString = self.dataArray[indexPath.item];
 	NSURL *url = [NSURL URLWithString:urlString];
 	[cell.imageView setImageWithURL:url placeholderImage:[UIImage imageNamed:@"image_placeholder"]];
+	
 	return cell;
+}
+
+/**
+ 重新事件传递方法，作用于，只点击图片时才响应，其他的位置跳过。
+ */
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+	UIView *view = [super hitTest:point withEvent:event];
+	if (!view.isHidden && [view isKindOfClass:[UIImageView class]]) {
+		return view;
+	}
+	return nil;
 }
 
 @end

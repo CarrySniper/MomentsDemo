@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
  *  @param imageArray url数组
  *  @param currentIndex   当前显示页
  */
-- (void)showImageArray:(NSArray<NSString *> *)imageArray currentIndex:(NSUInteger)currentIndex currentImageView:(UIImageView * _Nullable)currentImageView;
+- (void)showImageArray:(NSArray<NSString *> * _Nullable)imageArray currentIndex:(NSUInteger)currentIndex currentImageView:(UIImageView * _Nullable)currentImageView;
 
 @end
 

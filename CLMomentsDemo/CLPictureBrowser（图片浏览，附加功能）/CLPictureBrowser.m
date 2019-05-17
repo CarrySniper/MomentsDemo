@@ -12,6 +12,7 @@
 /// 这里是局部宏定义，小写，避免与其他。
 #define kScreenWidth        [UIScreen mainScreen].bounds.size.width
 #define kScreenHeight       [UIScreen mainScreen].bounds.size.height
+#define kAnimateDuration 	0.28
 
 #pragma mark - CLPictureBrowser
 #pragma mark interface
@@ -23,12 +24,14 @@
 /** CollectionView */
 @property (nonatomic, strong) UICollectionView *collectionView;
 
-/// UI控件
-@property (nonatomic, strong) UILabel *numberLabel;
-@property (nonatomic, strong) NSArray *imageArray;
+/** 分页控制 */
+@property (nonatomic, strong) UIPageControl *pageControl;
+
+/// 占位
 @property (nonatomic, strong) UIImageView *imageView;
 
 /// 用于记录的属性
+@property (nonatomic, strong) NSArray *imageArray;
 @property (nonatomic, assign) BOOL show;
 @property (nonatomic, assign) CGRect originalframe;
 @property (nonatomic, assign) NSUInteger originalIndex;
@@ -77,6 +80,20 @@
 
 }
 
+- (UIPageControl *)pageControl {
+	if (!_pageControl) {
+		CGFloat bottom = 30.0;
+		if (@available(iOS 11.0, *)) {
+			UIWindow *window = [[[UIApplication sharedApplication] delegate] window];
+			bottom = window.safeAreaInsets.bottom + 30.0;
+		}
+		_pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, kScreenHeight - bottom, kScreenWidth, 30.0)];
+		_pageControl.pageIndicatorTintColor = UIColor.lightGrayColor;
+		_pageControl.currentPageIndicatorTintColor = UIColor.whiteColor;
+	}
+	return _pageControl;
+}
+
 #pragma mark - 实例化
 + (instancetype)sharedInstance {
 	return [[self alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleDark]];
@@ -104,30 +121,26 @@
 	self.imageView.contentMode = UIViewContentModeScaleAspectFit;
 	[self.contentView addSubview:_imageView];
 	
-	// 图片数量
-	CGFloat statusBarHeight = CGRectGetHeight([[UIApplication sharedApplication] statusBarFrame]);
-	self.numberLabel = [[UILabel alloc]initWithFrame:CGRectMake(0, 10 + statusBarHeight, self.frame.size.width, 24)];
-	self.numberLabel.backgroundColor = [UIColor clearColor];
-	self.numberLabel.textColor = [UIColor whiteColor];
-	self.numberLabel.textAlignment = NSTextAlignmentCenter;
-	[self.contentView addSubview:self.numberLabel];
+	// 分页
+	[self.contentView addSubview:self.pageControl];
 }
 
 #pragma mark - 公有,外部调用方法
-- (void)showImageArray:(NSArray<NSString *> *)imageArray currentIndex:(NSUInteger)currentIndex currentImageView:(UIImageView * _Nullable)currentImageView
+- (void)showImageArray:(NSArray<NSString *> * _Nullable)imageArray currentIndex:(NSUInteger)currentIndex currentImageView:(UIImageView * _Nullable)currentImageView
 {
 	_originalIndex = currentIndex;
 	_imageArray = imageArray;
 	[self.collectionView reloadData];
 	if (imageArray.count > 1) {
-		self.numberLabel.text = [NSString stringWithFormat:@"%ld / %ld", (long)(currentIndex + 1), (unsigned long)_imageArray.count];
-		self.collectionView.scrollEnabled = YES;
+		self.pageControl.numberOfPages = imageArray.count;
+		self.pageControl.currentPage = currentIndex;
 		// 滚动到当前图片
+		self.collectionView.scrollEnabled = YES;
 		[self.collectionView setContentOffset:CGPointMake(self.frame.size.width * currentIndex, 0) animated:NO];
 	} else {
-		self.numberLabel.text = @"";
-		self.collectionView.scrollEnabled = NO;
+		self.pageControl.numberOfPages = 0;
 		// 滚动到当前图片
+		self.collectionView.scrollEnabled = NO;
 		[self.collectionView setContentOffset:CGPointMake(0, 0) animated:NO];
 	}
 	
@@ -143,31 +156,29 @@
 	
 	if (self.show == NO) {
 		self.show = YES;
+		// 获得根窗口，并添加UI
+		UIWindow *window = [UIApplication sharedApplication].keyWindow;
+		[window addSubview:self];
+		
 		if (currentImageView) {
+			// ImageView全屏后的高度
 			UIImage *image = currentImageView.image;
-			// 获得根窗口
-			UIWindow *window = [UIApplication sharedApplication].keyWindow;
-			self.originalframe = [currentImageView convertRect:currentImageView.bounds toView:window];
-			self.imageView.alpha = 1;
-			self.collectionView.alpha = 0;
+			CGFloat imageHeight = kScreenWidth * image.size.height/image.size.width;
 			
+			self.originalframe = [currentImageView convertRect:currentImageView.bounds toView:window];
 			self.imageView.frame = self.originalframe;
 			self.imageView.image = image;
-			[window addSubview:self];
-			
-			// ImageView全屏后的高度
-			CGFloat imageHeight = kScreenWidth * image.size.height/image.size.width;
-			[UIView animateWithDuration:0.28 animations:^{
+			self.imageView.alpha = 1;
+			self.collectionView.alpha = 0;
+			// 加上动画
+			[UIView animateWithDuration:kAnimateDuration animations:^{
 				self.imageView.frame = CGRectMake(0, (kScreenHeight - imageHeight) / 2.0, kScreenWidth, imageHeight);
-			}completion:^(BOOL finished) {
+			} completion:^(BOOL finished) {
 				self.imageView.alpha = 0;
 				self.collectionView.alpha = 1;
 			}];
-		}else{
-			// 获得根窗口
-			UIWindow *window = [UIApplication sharedApplication].keyWindow;
-			[window addSubview:self];
-			
+		} else {
+			// 不用动画
 			self.originalframe = CGRectZero;
 			self.imageView.alpha = 0;
 			self.collectionView.alpha = 1;
@@ -185,7 +196,7 @@
 		self.collectionView.alpha = 0;
 		self.imageView.alpha = 1;
 	}
-	[UIView animateWithDuration:0.28 animations:^{
+	[UIView animateWithDuration:kAnimateDuration animations:^{
 		if (CGRectIsEmpty(self.originalframe) || self.originalIndex != index) {
 			self.collectionView.alpha = 0;
 		} else {
@@ -229,10 +240,8 @@
 #pragma mark 改变当前页码
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
 	if ([scrollView isEqual:self.collectionView]) {
-		if (self.imageArray.count > 1) {
-			int index = fabs(scrollView.contentOffset.x + scrollView.frame.size.width/2)/scrollView.frame.size.width;
-			_numberLabel.text = [NSString stringWithFormat:@"%d / %zd", index + 1, _imageArray.count];
-		}
+		int index = fabs(scrollView.contentOffset.x + scrollView.frame.size.width/2)/scrollView.frame.size.width;
+		self.pageControl.currentPage = index;
 	}
 }
 
@@ -248,6 +257,7 @@
 	if (self) {
 		// Initialization code
 		self.backgroundColor = UIColor.clearColor;
+		self.contentView.backgroundColor = UIColor.clearColor;
 		
 		self.imageZoom = [[CLPictureZoom alloc]initWithFrame:[UIScreen mainScreen].bounds];
 		[self.contentView addSubview:self.imageZoom];

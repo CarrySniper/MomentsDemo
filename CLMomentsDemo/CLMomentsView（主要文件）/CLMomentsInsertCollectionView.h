@@ -11,7 +11,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-
+// 只点击图片时才响应，其他的位置跳过。
 @interface CLMomentsInsertCollectionView : UICollectionView<UICollectionViewDelegate, UICollectionViewDataSource>
 
 /**

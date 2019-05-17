@@ -23,6 +23,7 @@
 		self.bouncesZoom = YES;//NO时缩放不可超出最大最小缩放范围 默认YES
 		self.minimumZoomScale = 1;//缩放最小倍数 =1不能缩小
 		self.maximumZoomScale = 3;//缩放最大倍数 =1不能放大
+		self.backgroundColor = UIColor.clearColor;
 		
 		if (@available(iOS 11.0, *)) {
 			self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -30,11 +31,12 @@
 		}
 		
 		self.imageView = [[UIImageView alloc]initWithFrame:self.frame];
+		self.imageView.backgroundColor = UIColor.clearColor;
 		self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-		self.userInteractionEnabled = YES;
 		[self addSubview:self.imageView];
 		
 		// 单击的 TapRecognizer
+		self.userInteractionEnabled = YES;
 		UITapGestureRecognizer *singleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(singleTap:)];
 		singleTap.numberOfTapsRequired = 1; //点击的次数 ＝1 单击
 		[self addGestureRecognizer:singleTap];//给对象添加一个手势监测；
@@ -44,6 +46,7 @@
 
 #pragma mark - 点击事件
 - (void)singleTap:(UITapGestureRecognizer *)recognizer {
+	self.zoomScale = 1;
 	dispatch_async(dispatch_get_main_queue(), ^{
 		if (self.actionHandler) {
 			self.actionHandler();
